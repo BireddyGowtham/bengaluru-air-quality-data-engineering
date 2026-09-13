@@ -66,14 +66,25 @@ def find_timestamp_gaps(df, parameter, expected_minutes=15):
         df["parameter"] == parameter
     ].copy()
 
-    data["datetimeUtc"] = pd.to_datetime(
-        data["datetimeUtc"]
+    # Support both raw and transformed column names
+    if "datetime_utc" in data.columns:
+        timestamp_column = "datetime_utc"
+    elif "datetimeUtc" in data.columns:
+        timestamp_column = "datetimeUtc"
+    else:
+        raise ValueError(
+            "DataFrame must contain datetime_utc or datetimeUtc"
+        )
+
+    data[timestamp_column] = pd.to_datetime(
+        data[timestamp_column],
+        utc=True
     )
 
-    data = data.sort_values("datetimeUtc")
+    data = data.sort_values(timestamp_column)
 
     data["time_difference"] = (
-        data["datetimeUtc"].diff()
+        data[timestamp_column].diff()
     )
 
     expected_interval = pd.Timedelta(
@@ -159,9 +170,8 @@ def check_valid_ranges(df):
 
     if invalid_records:
         return pd.concat(
-            invalid_records,
-            ignore_index=True
-        )
+        invalid_records
+    )
 
     return pd.DataFrame()
 def load_data(file_path):
