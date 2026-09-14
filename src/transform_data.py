@@ -1,3 +1,4 @@
+import argparse
 import pandas as pd
 
 from data_quality import (
@@ -15,19 +16,19 @@ def load_data(file_path):
 def transform_timestamps(df):
     df = df.copy()
 
-    df["datetimeUtc"] = pd.to_datetime(
-        df["datetimeUtc"],
+    df["datetime_utc"] = pd.to_datetime(
+        df["datetime_utc"],
         utc=True
     )
 
-    df["datetimeLocal"] = pd.to_datetime(
-        df["datetimeLocal"]
+    df["datetime_local"] = pd.to_datetime(
+        df["datetime_local"]
     )
 
-    df["local_date"] = df["datetimeLocal"].dt.date
-    df["local_year"] = df["datetimeLocal"].dt.year
-    df["local_month"] = df["datetimeLocal"].dt.month
-    df["local_hour"] = df["datetimeLocal"].dt.hour
+    df["local_date"] = df["datetime_local"].dt.date
+    df["local_year"] = df["datetime_local"].dt.year
+    df["local_month"] = df["datetime_local"].dt.month
+    df["local_hour"] = df["datetime_local"].dt.hour
 
     return df
 
@@ -124,15 +125,33 @@ def add_quality_flags(df):
 
     return df
 
+def parse_arguments():
+    """
+    Parse command-line arguments for the transformation script.
+    """
+    parser = argparse.ArgumentParser(
+        description="Transform and validate air quality data"
+    )
+
+    parser.add_argument(
+        "--input",
+        required=True,
+        help="Path to the raw input CSV file"
+    )
+
+    return parser.parse_args()
+
 if __name__ == "__main__":
 
-    file_path = "data/raw/openaq_measurements.csv"
+    args = parse_arguments()
+
+    file_path = args.input
 
     df = load_data(file_path)
 
     df = transform_timestamps(df)
 
-    df = standardize_columns(df)
+    
 
     df = fill_location_metadata(df)
 
@@ -176,7 +195,13 @@ if __name__ == "__main__":
         "Total missing measurements:",
         wind_gaps["missing_intervals"].sum()
     )
-    output_path = "data/processed/openaq_measurements_transformed.csv"
+    start_date = file_path.split("_")[-2]
+    end_date = file_path.split("_")[-1].replace(".csv", "")
+
+    output_path = (
+        f"data/processed/"
+        f"openaq_measurements_{start_date}_{end_date}.csv"
+    )
 
     df.to_csv(
         output_path,
