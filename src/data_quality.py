@@ -5,38 +5,42 @@ def find_iqr_outliers(df):
     """
     Identify statistical outliers using the IQR method.
 
-    Returns a DataFrame containing:
-    parameter, value, unit, datetimeUtc, and datetimeLocal.
+    IQR is calculated separately for each parameter and unit
+    combination to avoid mixing different measurement units.
+
+    Returns a DataFrame containing the original row indexes.
     """
 
     outliers = []
 
-    for parameter in df["parameter"].unique():
+    for (parameter, unit), group in df.groupby(
+        ["parameter", "unit"],
+        sort=False
+    ):
 
-        parameter_data = df[
-            df["parameter"] == parameter
-        ].copy()
-
-        q1 = parameter_data["value"].quantile(0.25)
-        q3 = parameter_data["value"].quantile(0.75)
+        q1 = group["value"].quantile(0.25)
+        q3 = group["value"].quantile(0.75)
 
         iqr = q3 - q1
 
         lower_bound = q1 - 1.5 * iqr
         upper_bound = q3 + 1.5 * iqr
 
-        parameter_outliers = parameter_data[
-            (parameter_data["value"] < lower_bound) |
-            (parameter_data["value"] > upper_bound)
+        parameter_outliers = group[
+            (group["value"] < lower_bound) |
+            (group["value"] > upper_bound)
         ].copy()
 
         if not parameter_outliers.empty:
             outliers.append(parameter_outliers)
 
     if outliers:
-        return pd.concat(outliers, ignore_index=True)
+        # Preserve the original DataFrame indexes
+        return pd.concat(outliers)
 
     return pd.DataFrame()
+
+
 def find_logical_duplicates(df):
     """
     Find multiple measurements recorded for the same
